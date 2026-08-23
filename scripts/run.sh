@@ -1,13 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_ROOT="/Users/spmac/Documents/自媒体专用"
-TOOL_DIR="$PROJECT_ROOT/outputs/字幕转时间码工具"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 INPUT_PATH="${1:-}"
 OUTPUT_NAME="${2:-}"
+OUTPUT_DIR="${3:-}"
 
 if [[ -z "$INPUT_PATH" ]]; then
-  echo '用法：run.sh "/完整路径/音频或视频.mp4" "可选成品名"' >&2
+  echo '用法：run.sh "/完整路径/音频或视频.mp4" "可选成品名" "可选输出目录"' >&2
   exit 1
 fi
 
@@ -16,33 +18,14 @@ if [[ ! -f "$INPUT_PATH" ]]; then
   exit 1
 fi
 
-for command_name in node npm ffmpeg; do
-  if ! command -v "$command_name" >/dev/null 2>&1; then
-    echo "缺少运行命令：$command_name" >&2
-    exit 1
-  fi
-done
+resolve_node_tools
 
-required_paths=(
-  "$PROJECT_ROOT/package.json"
-  "$PROJECT_ROOT/node_modules/@remotion/install-whisper-cpp"
-  "$TOOL_DIR/transcribe.mjs"
-  "$TOOL_DIR/runtime/whisper.cpp/main"
-  "$TOOL_DIR/runtime/whisper.cpp/ggml-small.bin"
-  "$TOOL_DIR/runtime/whisper.cpp/ggml-metal.metal"
-  "$TOOL_DIR/runtime/whisper.cpp/ggml-common.h"
-)
-
-for required_path in "${required_paths[@]}"; do
-  if [[ ! -e "$required_path" ]]; then
-    echo "字幕工具依赖不完整，缺少：$required_path" >&2
-    exit 1
-  fi
-done
-
-cd "$PROJECT_ROOT"
-if [[ -n "$OUTPUT_NAME" ]]; then
-  npm run 字幕:转时间码 -- "$INPUT_PATH" "$OUTPUT_NAME"
-else
-  npm run 字幕:转时间码 -- "$INPUT_PATH"
+if ! runtime_is_ready; then
+  echo "字幕运行环境尚未安装或不完整。" >&2
+  echo "请先运行：bash \"$SCRIPT_DIR/setup.sh\" --install-system-deps" >&2
+  exit 2
 fi
+
+export CODEX_SUBTITLE_RUNTIME_DIR="$RUNTIME_DIR"
+export CODEX_SUBTITLE_OUTPUT_DIR="$OUTPUT_DIR"
+"$NODE_BIN" "$SCRIPT_DIR/transcribe.mjs" "$INPUT_PATH" "$OUTPUT_NAME"

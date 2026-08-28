@@ -5,13 +5,14 @@ import path from 'node:path';
 import {createRequire} from 'node:module';
 
 const runtimeDir = process.env.CODEX_SUBTITLE_RUNTIME_DIR;
+const configuredModelPath = process.env.CODEX_SUBTITLE_MODEL_PATH;
 const inputArg = process.argv[2];
 const requestedName = process.argv[3];
 const model = process.env.SUBTITLE_WHISPER_MODEL || 'small';
 const whisperCppVersion = '1.5.5';
 
-if (!runtimeDir || !inputArg) {
-  throw new Error('缺少运行环境或输入文件。请通过 run.sh 执行。');
+if (!runtimeDir || !configuredModelPath || !inputArg) {
+  throw new Error('缺少运行环境或输入文件。请通过 run.mjs 执行。');
 }
 
 const inputPath = path.resolve(inputArg);
@@ -23,6 +24,7 @@ const requireFromRuntime = createRequire(path.join(runtimeDir, 'package.json'));
 const {transcribe, toCaptions} = requireFromRuntime('@remotion/install-whisper-cpp');
 const ffmpegPath = requireFromRuntime('ffmpeg-static');
 const whisperDir = path.join(runtimeDir, 'whisper.cpp');
+const modelFolder = path.dirname(configuredModelPath);
 const outputDir = process.env.CODEX_SUBTITLE_OUTPUT_DIR
   ? path.resolve(process.env.CODEX_SUBTITLE_OUTPUT_DIR)
   : path.join(path.dirname(inputPath), '字幕文件');
@@ -77,6 +79,7 @@ try {
     model,
     whisperPath: whisperDir,
     whisperCppVersion,
+    modelFolder,
     inputPath: wavPath,
     tokenLevelTimestamps: true,
     language: 'zh',
